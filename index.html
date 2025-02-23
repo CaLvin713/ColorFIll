@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Color Fill App</title>
+  <style>
+        /* Increase size of image prompt label */
+    label[for="prompt"] {
+      font-size: 20px; /* Make label larger */
+      font-weight: bold; /* Make it bold */
+    }
+
+    /* Increase size of text input box */
+    #prompt {
+      font-size: 25px; /* Increase text size */
+      padding: 10px; /* Add padding for better appearance */
+      width: 300px; /* Make input box wider */
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Centered Controls */
+    #controls-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    #controls {
+      display: flex;
+      gap: 15px;
+    }
+
+    #downloadImage, #undoButton, #getImage {
+      padding: 12px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    #downloadImage:hover, #undoButton:hover, #getImage:hover {
+      background-color: #0056b3;
+    }
+
+    /* Color Palette Below Controls */
+    .color-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 10px;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-option {
+      width: 40px;
+      height: 40px;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .color-option:hover {
+      border: 2px solid black;
+    }
+
+    .selected {
+      border: 3px solid black !important;
+    }
+
+    /* Color Picker Button */
+    .color-picker-container {
+      width: 40px;
+      height: 40px;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 2px solid gray;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      position: relative;
+    }
+
+    #colorPicker {
+      width: 100%;
+      height: 100%;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Main content adjustments */
+    .content {
+      margin-top: 20px;
+      padding: 20px;
+    }
+
+    #bunnyCanvas {
+      border: 1px solid #ccc;
+      cursor: crosshair;
+      display: block;
+      margin: auto;
+      margin-top: 10px; /* Keeps existing space above */
+      margin-bottom: 50px; /* Adds space below */
+    }
+
+
+    h2 {
+      margin-bottom: 55px; /* Adds a small gap below the heading */
+    }
+
+
+    #status {
+      margin-top: 10px;
+      font-style: italic;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Main Content -->
+<div class="content">
+  <h2>Tap on the image to fill a color</h2>
+
+  <!-- Image Generation Input & Button -->
+  <div style="display: flex; align-items: center; gap: 30px; justify-content: center;">
+    <label for="prompt">Image prompt: </label>
+    <input type="text" id="prompt" placeholder="Enter prompt">
+    <button id="getImage">Get Image</button>
+  </div>
+  
+  <!-- Status label now below the button -->
+  <div id="status" style="margin-top: 10px; min-height: 20px;"></div>
+  
+  <canvas id="bunnyCanvas"></canvas>
+
+  <!-- Controls and Color Palette Below -->
+  <div id="controls-container">
+    <div id="controls">
+      <button id="downloadImage">Download Image</button>
+      <button id="undoButton" disabled>Undo</button>
+    </div>
+
+    <!-- Color Palette and Custom Picker Fully Aligned to the Right -->
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-left: auto; align-items: flex-end;">
+      
+      <!-- Standard Colors (On Top) -->
+      <div class="color-palette" style="display: flex; gap: 5px;">
+        <div class="color-option" style="background: red;" data-color="#ff0000"></div>
+        <div class="color-option" style="background: blue;" data-color="#0000ff"></div>
+        <div class="color-option" style="background: green;" data-color="#008000"></div>
+        <div class="color-option" style="background: yellow;" data-color="#ffff00"></div>
+        <div class="color-option" style="background: orange;" data-color="#ffa500"></div>
+        <div class="color-option" style="background: purple;" data-color="#800080"></div>
+        <div class="color-option" style="background: pink;" data-color="#ff69b4"></div> <!-- Pink -->
+        <div class="color-option" style="background: brown; border: 1px solid #000;" data-color="#8b4513"></div> <!-- Brown with border -->
+    </div>
+      <!-- Custom Color Picker (Below) -->
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <label for="colorPicker">Custom Color:</label>
+        <div class="color-picker-container">
+          <input type="color" id="colorPicker">
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script>
+  const canvas = document.getElementById('bunnyCanvas');
+  const ctx = canvas.getContext('2d');
+  const statusDiv = document.getElementById('status');
+  let img = new Image();
+  let selectedColor = "#ff0000"; // Default color (red)
+  selectedColor = "#ff0000";
+  // Ensure the red color box is selected on page load
+  document.querySelector('.color-option[data-color="#ff0000"]').classList.add('selected');
+  
+  // Load the initial local image (bwbunny.png must be in the public folder)
+  img.src = 'bwbunny.png';
+  img.onload = function() {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+  };
+
+  // Convert hex color string to an [r, g, b, a] array.
+  function hexToRGBA(hex) {
+    hex = hex.replace(/^#/, '');
+    let bigint = parseInt(hex, 16);
+    return hex.length === 3
+      ? [((bigint >> 8) & 0xF) * 17, ((bigint >> 4) & 0xF) * 17, (bigint & 0xF) * 17, 255]
+      : [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255, 255];
+  }
+
+  // Check if two colors match within a given tolerance.
+  function colorMatch(a, b, tolerance) {
+    return Math.abs(a[0] - b[0]) <= tolerance &&
+           Math.abs(a[1] - b[1]) <= tolerance &&
+           Math.abs(a[2] - b[2]) <= tolerance;
+  }
+
+  // Flood fill algorithm using a stack.
+  function floodFill(startX, startY, fillColor, tolerance) {
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+    const stack = [];
+    const startPos = (startY * width + startX) * 4;
+    const startColor = [data[startPos], data[startPos+1], data[startPos+2], data[startPos+3]];
+
+    if (colorMatch(startColor, fillColor, 0)) return;
+    stack.push([startX, startY]);
+
+    while (stack.length) {
+      const [x, y] = stack.pop();
+      const i = (y * width + x) * 4;
+      const currentColor = [data[i], data[i+1], data[i+2], data[i+3]];
+
+      if (colorMatch(currentColor, startColor, tolerance)) {
+        data[i]   = fillColor[0];
+        data[i+1] = fillColor[1];
+        data[i+2] = fillColor[2];
+        data[i+3] = fillColor[3];
+
+        if (x > 0) stack.push([x - 1, y]);
+        if (x < width - 1) stack.push([x + 1, y]);
+        if (y > 0) stack.push([x, y - 1]);
+        if (y < height - 1) stack.push([x, y + 1]);
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // Handle preset color selection
+  document.querySelectorAll('.color-option').forEach(colorBox => {
+    colorBox.addEventListener('click', function() {
+      document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+      this.classList.add('selected');
+      selectedColor = this.getAttribute('data-color'); // Use preset color
+    });
+  });
+
+  // Handle custom color picker selection
+  document.getElementById('colorPicker').addEventListener('input', function() {
+    selectedColor = this.value; // Use custom color from the picker
+    document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected')); // Deselect preset colors
+  });
+
+  // On canvas click, perform the flood fill using the selected color.
+  let undoStack = []; // Stores multiple previous states
+  const maxUndoSteps = 10; // Limit undo steps to avoid excessive memory use
+  const tolerance = 20; // Adjust this to control how much area is filled
+
+  canvas.addEventListener('click', function(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(event.clientX - rect.left);
+    const y = Math.floor(event.clientY - rect.top);
+
+    // Convert the selected color (preset or custom) into RGBA format
+    const fillColor = hexToRGBA(selectedColor);
+
+    // Store previous state before applying color
+    undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+
+    // Limit stack size to avoid memory issues
+    if (undoStack.length > maxUndoSteps) {
+      undoStack.shift(); // Remove the oldest state
+    }
+
+    document.getElementById('undoButton').disabled = false; // Enable Back button
+    floodFill(x, y, fillColor, tolerance);
+  });
+
+  // Back button (Undo multiple steps)
+  document.getElementById('undoButton').addEventListener('click', function () {
+    if (undoStack.length > 0) {
+      const lastState = undoStack.pop();
+      ctx.putImageData(lastState, 0, 0); // Restore the last saved state
+
+      // Disable the Back button if no more undo steps are available
+      if (undoStack.length === 0) {
+        this.disabled = true;
+      }
+    }
+  });
+
+  // Select the Get Image button
+  const getImageButton = document.getElementById('getImage');
+
+  // Handle image generation button click.
+  getImageButton.addEventListener('click', function () {
+    const promptText = document.getElementById('prompt').value;
+    statusDiv.textContent = 'Generating and downloading image...';
+    img.src = "/gen.png";
+
+    // Disable buttons while generating
+    getImageButton.disabled = true;
+    getImageButton.textContent = 'Generating...';
+
+    fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText }) // Send the user prompt or empty string
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.localUrl) {
+        statusDiv.textContent = 'Image downloaded. Loading...';
+
+        // Load image into canvas
+        img = new Image();
+        img.src = data.localUrl;
+        img.onload = function () {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          statusDiv.textContent = 'Image loaded.';
+
+          // Enable buttons after loading
+          getImageButton.disabled = false;
+          getImageButton.textContent = 'Get Image';
+        };
+      } else {
+        statusDiv.textContent = 'Failed to generate image.';
+        getImageButton.disabled = false;
+        getImageButton.textContent = 'Get Image';
+      }
+    })
+    .catch(() => {
+      statusDiv.textContent = 'Error generating image.';
+      getImageButton.disabled = false;
+      getImageButton.textContent = 'Get Image';
+    });
+  });
+
+  // Handle image download
+  document.getElementById('downloadImage').addEventListener('click', function () {
+    const link = document.createElement('a');
+    link.download = 'edited_image.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+</script>
+
+</body>
+</html>
